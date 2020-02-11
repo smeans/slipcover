@@ -58,7 +58,7 @@ def handle_session_PUT_pre(req):
         raise ValueError
 
     req.surl.doc_id = str(uuid.uuid4())
-    req.req_json['created'] = datetime.datetime.now().isoformat()
+    req.req_json['created'] = datetime.datetime.utcnow().isoformat()
     req.req_json['secret'] = str(uuid.uuid4())
 
 def confirm_session(req, session):

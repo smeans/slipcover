@@ -17,7 +17,7 @@ import requests
 import importlib
 import json
 
-from twisted.internet import reactor
+from twisted.internet import ssl, reactor
 from twisted.web import proxy, http
 
 from cloudant.client import Cloudant
@@ -169,6 +169,16 @@ class SlipcoverProxyFactory(http.HTTPFactory):
         return SlipcoverProxy()
 
 if __name__ == '__main__':
-    if 'http_port' in config['server_config']:
-        reactor.listenTCP(config['server_config']['http_port'], SlipcoverProxyFactory())
+    endpoints = config['server_config']['endpoints']
+
+    for endpoint in endpoints:
+        port = endpoint['port']
+        interface = endpoint['interface'] if 'interface' in endpoint else ''
+
+        if endpoint['protocol'] == 'http':
+            reactor.listenTCP(port, SlipcoverProxyFactory(), interface=interface)
+        elif endpoint['protocol'] == 'https':
+            reactor.listenSSL(endpoint['port'], SlipcoverProxyFactory(),
+                          ssl.DefaultOpenSSLContextFactory(
+                          'keys/server.key', 'keys/server.cert'),  interface=interface)
     reactor.run()
