@@ -1,6 +1,7 @@
-import log
 import uuid
 import datetime
+
+from . import log
 
 allow = ['_id', 'created']
 deny = ['secret']

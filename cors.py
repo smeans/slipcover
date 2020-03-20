@@ -1,6 +1,7 @@
-import log
 import uuid
 import datetime
+
+from . import log
 
 def handle_session_url(req):
     if req.method == b'OPTIONS':
