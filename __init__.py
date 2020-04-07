@@ -39,6 +39,7 @@ except requests.exceptions.HTTPError as e:
 
 cdb = cc['slipcover']
 config = cdb['config']
+default_db = cc[config['default_db']]
 handler_modules = [importlib.import_module(name) for name in config['handlers']]
 
 def get_request_serial():
