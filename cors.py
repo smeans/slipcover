@@ -1,7 +1,8 @@
 import uuid
 import datetime
 
-from . import log
+from slipcover import FinishProcessing
+from slipcover import log
 
 def handle_session_url(req):
     if req.method == b'OPTIONS':
@@ -13,4 +14,4 @@ def handle_session_url(req):
         req.setResponseCode(200, b'OK')
         req.responseHeaders.setRawHeaders('content-type', [b'application/json'])
         req.resp_data = b'{}'
-        raise ValueError
+        raise FinishProcessing

@@ -42,11 +42,14 @@ def authenticate(req):
 
     return None
 
-def handle_session_url(req):
+def handle_url(req):
     req.responseHeaders.setRawHeaders('access-control-allow-origin', [b'*'])
 
     req.session = authenticate(req)
+    if req.session:
+        log.info(req.request_serial, 'authenticated', req.session['email'])
 
+def handle_session_url(req):
     if not req.surl.doc_id:
         doc_id = get_auth_doc_id(req)
         req.surl.doc_id = doc_id

@@ -41,7 +41,7 @@ def handle_admin_POST_pre(req):
 
     if req.req_json['opcode'] == 'shutdown':
         slipcover.shutdown()
-        
+
     req.responseHeaders.setRawHeaders('content-type', [b'application/json'])
     req.resp_data = b'{}'
 

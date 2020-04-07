@@ -22,7 +22,7 @@ from twisted.web import proxy, http
 
 from cloudant.client import Cloudant
 
-from . import log
+from slipcover import log
 
 class FinishProcessing(Exception):
     pass
@@ -89,6 +89,20 @@ class SlipcoverProxyRequest(proxy.ProxyRequest):
     resp_json = None
 
     def __init__(self, channel, queued=http._QUEUED_SENTINEL):
+        class RequestLog(object):
+            pass
+
+        def _wrap_log_func(level):
+            def wf(*args):
+                getattr(log, level)(self.request_serial, *args)
+
+            return wf
+
+        self.log = RequestLog()
+
+        for level in log.levels:
+            setattr(self.log, level, _wrap_log_func(level))
+
         super().__init__(channel, queued)
         self.request_serial = get_request_serial()
         self.cc = cc
@@ -101,7 +115,7 @@ class SlipcoverProxyRequest(proxy.ProxyRequest):
             self.content.seek(0, 0)
             self.req_data = self.content.read()
 
-            log.info(self.request_serial, self.http_method, self.http_uri)
+            self.log.info(self.http_method, self.http_uri)
             self.surl = SlipcoverURL(self.http_uri)
             self.fireHandler('url')
 
@@ -109,7 +123,7 @@ class SlipcoverProxyRequest(proxy.ProxyRequest):
                 try:
                     self.req_json = json.loads(self.req_data.decode())
                 except Exception as e:
-                    log.debug('malformed JSON in request', e)
+                    self.log.debug('malformed JSON in request', e)
 
             self.fireHandler('pre')
             couchpath = self.surl.couchpath
@@ -147,7 +161,7 @@ class SlipcoverProxyRequest(proxy.ProxyRequest):
         try:
             self.resp_json = json.loads(self.resp_data.decode())
         except Exception as e:
-            log.debug('unable to parse resp_data', e)
+            self.log.debug('unable to parse resp_data', e)
             pass
 
         self.fireHandler('finish')
@@ -159,15 +173,17 @@ class SlipcoverProxyRequest(proxy.ProxyRequest):
             super().write(data)
 
         self.fireHandler('final')
-        log.info(self.request_serial, 'complete', self.code, self.code_message.decode())
+        self.log.info('complete', self.code, self.code_message.decode())
         self.transport.loseConnection()
 
     def fireHandler(self, type):
+        fname_list = ['handle_%s' % type]
+
         if self.surl.doc_type:
-            fname = 'handle_%s_%s' % (self.surl.doc_type, type)
-            [getattr(m, fname)(self) for m in handler_modules if hasattr(m, fname)]
-            fname = 'handle_%s_%s_%s' % (self.surl.doc_type, self.method.decode(), type)
-            [getattr(m, fname)(self) for m in handler_modules if hasattr(m, fname)]
+            fname_list.append('handle_%s_%s' % (self.surl.doc_type, type))
+            fname_list.append('handle_%s_%s_%s' % (self.surl.doc_type, self.method.decode(), type))
+
+        [[getattr(m, fname)(self) for m in handler_modules if hasattr(m, fname)] for fname in fname_list]
 
 class SlipcoverProxy(proxy.Proxy):
     requestFactory = SlipcoverProxyRequest
@@ -176,18 +192,19 @@ class SlipcoverProxyFactory(http.HTTPFactory):
     def buildProtocol(self, addr):
         return SlipcoverProxy()
 
-endpoints = config['server_config']['endpoints']
+def start():
+    endpoints = config['server_config']['endpoints']
 
-for endpoint in endpoints:
-    log.info('slipcover: listening on port %s (%s)' % (endpoint['port'], endpoint['protocol']))
-    port = endpoint['port']
-    interface = endpoint['interface'] if 'interface' in endpoint else ''
+    for endpoint in endpoints:
+        log.info('slipcover: listening on port %s (%s)' % (endpoint['port'], endpoint['protocol']))
+        port = endpoint['port']
+        interface = endpoint['interface'] if 'interface' in endpoint else ''
 
-    if endpoint['protocol'] == 'http':
-        reactor.listenTCP(port, SlipcoverProxyFactory(), interface=interface)
-    elif endpoint['protocol'] == 'https':
-        reactor.listenSSL(endpoint['port'], SlipcoverProxyFactory(),
-                      ssl.DefaultOpenSSLContextFactory(
-                      'keys/server.key', 'keys/server.cert'),  interface=interface)
-reactor.run()
-log.info('slipcover: exiting')
+        if endpoint['protocol'] == 'http':
+            reactor.listenTCP(port, SlipcoverProxyFactory(), interface=interface)
+        elif endpoint['protocol'] == 'https':
+            reactor.listenSSL(endpoint['port'], SlipcoverProxyFactory(),
+                          ssl.DefaultOpenSSLContextFactory(
+                          'keys/server.key', 'keys/server.cert'),  interface=interface)
+    reactor.run()
+    log.info('slipcover: exiting')
