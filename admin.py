@@ -5,7 +5,7 @@ from functools import wraps
 import slipcover
 from slipcover import log
 from slipcover import sessions
-from slipcover import FinishProcessing
+from slipcover import FinishProcessing, Unauthorized401, Forbidden403
 from slipcover import config
 
 class AuthException(FinishProcessing):
@@ -18,13 +18,11 @@ def admin_only(f):
         if not hasattr(req, 'session'):
             req.session = sessions.authenticate(req)
 
-        if not req.session or not req.session['email'] in config['admins']:
-            req.setResponseCode(403, b'Forbidden')
+        if not req.session:
+            raise Unauthorized401()
 
-            req.responseHeaders.setRawHeaders('content-type', [b'application/json'])
-            req.resp_data = b'{}'
-
-            raise AuthException('Forbidden')
+        if not req.session['email'] in config['admins']:
+            raise Forbidden403()
 
         return f(*args, **kwargs)
 
@@ -45,4 +43,4 @@ def handle_admin_POST_pre(req):
     req.responseHeaders.setRawHeaders('content-type', [b'application/json'])
     req.resp_data = b'{}'
 
-    raise FinishProcessing()
+    raise FinishProcessing(200)

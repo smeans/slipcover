@@ -25,7 +25,22 @@ from cloudant.client import Cloudant
 from slipcover import log
 
 class FinishProcessing(Exception):
-    pass
+    def __init__(self, status=500, message=None, resp_data=None):
+        message = message or resources['http_status_codes'][str(status)]
+
+        super().__init__(message)
+
+        self.status = status
+        self.message = message.encode()
+        self.resp_data = resp_data or b'{}'
+
+class Unauthorized401(FinishProcessing):
+    def __init__(self, message=None):
+        super().__init__(401,  message)
+
+class Forbidden403(FinishProcessing):
+    def __init__(self, message=None):
+        super().__init__(403, message)
 
 cc = None
 try:
@@ -39,6 +54,8 @@ except requests.exceptions.HTTPError as e:
 
 cdb = cc['slipcover']
 config = cdb['config']
+resources = config['resources']
+
 handler_modules = [importlib.import_module(name) for name in config['handlers']]
 
 def get_request_serial():
@@ -144,6 +161,8 @@ class SlipcoverProxyRequest(proxy.ProxyRequest):
         except ValueError as ve:
             self.finish()
         except FinishProcessing as fp:
+            self.setResponseCode(fp.status, bytes(fp.message))
+            self.resp_data = fp.resp_data
             self.finish()
         except Exception as e:
             log.error("processing error", e)

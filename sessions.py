@@ -1,5 +1,6 @@
 import uuid
 import datetime
+from functools import wraps
 
 from . import log
 
@@ -42,6 +43,20 @@ def authenticate(req):
 
     return None
 
+def auth_only(f):
+    @wraps(f)
+    def ao_wrapper(*args, **kwargs):
+        req = args[0]
+        if not hasattr(req, 'session'):
+            req.session = authenticate(req)
+
+        if not req.session:
+            raise Unauthorized401()
+
+        return f(*args, **kwargs)
+
+    return ao_wrapper
+
 def handle_url(req):
     req.responseHeaders.setRawHeaders('access-control-allow-origin', [b'*'])
 
@@ -72,6 +87,7 @@ def confirm_session(req, session):
     secret = req.args[b'secret'][0].decode()
     if secret == session['secret']:
         session['confirmed'] = datetime.datetime.now().isoformat()
+        req.log.debug('session pre-save', session)
         session.save()
 
 def handle_session_GET_pre(req):
