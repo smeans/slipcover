@@ -34,6 +34,10 @@ class FinishProcessing(Exception):
         self.message = message.encode()
         self.resp_data = resp_data or b'{}'
 
+class BadRequest400(FinishProcessing):
+    def __init__(self, message=None):
+        super().__init__(400,  message)
+
 class Unauthorized401(FinishProcessing):
     def __init__(self, message=None):
         super().__init__(401,  message)
@@ -41,6 +45,10 @@ class Unauthorized401(FinishProcessing):
 class Forbidden403(FinishProcessing):
     def __init__(self, message=None):
         super().__init__(403, message)
+
+class NotFound404(FinishProcessing):
+    def __init__(self, message=None):
+        super().__init__(404, message)
 
 cc = None
 try:
@@ -148,7 +156,7 @@ class SlipcoverProxyRequest(proxy.ProxyRequest):
                 req_data = json.dumps(self.req_json).encode() if self.req_json else self.req_data
                 headers = self.getAllHeaders().copy()
                 headers[b'content-length'] = str(len(req_data)).encode('ascii')
-                clientFactory = proxy.ProxyClientFactory(self.method, couchpath.encode('ascii'),
+                clientFactory = proxy.ProxyClientFactory(self.http_method.encode('ascii'), couchpath.encode('ascii'),
                         'http'.encode('ascii'), headers,
                         req_data, self)
                 self.reactor.connectTCP('127.0.0.1', 5984, clientFactory)
@@ -162,7 +170,10 @@ class SlipcoverProxyRequest(proxy.ProxyRequest):
             self.finish()
         except FinishProcessing as fp:
             self.setResponseCode(fp.status, bytes(fp.message))
-            self.resp_data = fp.resp_data
+
+            if fp.resp_data:
+                self.resp_data = fp.resp_data
+
             self.finish()
         except Exception as e:
             log.error("processing error", e)

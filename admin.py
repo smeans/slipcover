@@ -11,6 +11,9 @@ from slipcover import config
 class AuthException(FinishProcessing):
     pass
 
+def is_admin(email):
+    return email in config['admins']
+
 def admin_only(f):
     @wraps(f)
     def ao_wrapper(*args, **kwargs):
@@ -21,7 +24,7 @@ def admin_only(f):
         if not req.session:
             raise Unauthorized401()
 
-        if not req.session['email'] in config['admins']:
+        if not is_admin(req.session['email']):
             raise Forbidden403()
 
         return f(*args, **kwargs)

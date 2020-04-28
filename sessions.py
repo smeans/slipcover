@@ -3,6 +3,7 @@ import datetime
 from functools import wraps
 
 from . import log
+from . import admin
 
 allow = ['_id', 'created']
 deny = ['secret']
@@ -34,6 +35,7 @@ def authenticate(req):
             return
 
         session = sdb[cid]
+        session.is_admin = admin.is_admin(session['email'])
 
         if 'confirmed' in session:
             return session
@@ -108,5 +110,7 @@ def handle_session_GET_finish(req):
 
     if not req.session or req.session['_id'] != d['_id']:
         d = {k: d[k] for k in d if k in allow}
+
+    d['is_admin'] = admin.is_admin(req.session['email'])
 
     req.resp_json = d
