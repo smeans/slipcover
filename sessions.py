@@ -6,7 +6,7 @@ from . import log
 from . import admin
 
 allow = ['_id', 'created']
-deny = ['secret']
+deny = ['secret', 'confirm_id']
 
 def get_auth_doc_id(req):
     try:
@@ -81,6 +81,7 @@ def handle_session_PUT_pre(req):
     req.surl.doc_id = str(uuid.uuid4())
     req.req_json['created'] = datetime.datetime.utcnow().isoformat()
     req.req_json['secret'] = str(uuid.uuid4())
+    req.req_json['confirm_id'] = 'session:%s' % str(uuid.uuid4())
 
 def confirm_session(req, session):
     if 'confirmed' in session:
@@ -89,7 +90,6 @@ def confirm_session(req, session):
     secret = req.args[b'secret'][0].decode()
     if secret == session['secret']:
         session['confirmed'] = datetime.datetime.now().isoformat()
-        req.log.debug('session pre-save', session)
         session.save()
 
 def handle_session_GET_pre(req):
@@ -98,6 +98,14 @@ def handle_session_GET_pre(req):
 
     if b'secret' in req.args:
         sdb = req.cc[req.surl.db]
+
+        pcm = sdb.get_view_result('slipcover', 'pending_confirm', key=req.surl.couchid)[0]
+        req.log.debug(pcm)
+
+        if not pcm:
+            return
+
+        req.surl.doc_type, req.surl.doc_id = pcm[0]['id'].split(':')
 
         if not req.surl.couchid in sdb:
             return
@@ -110,7 +118,7 @@ def handle_session_GET_finish(req):
 
     if not req.session or req.session['_id'] != d['_id']:
         d = {k: d[k] for k in d if k in allow}
-
-    d['is_admin'] = admin.is_admin(req.session['email'])
+    else:
+        d['is_admin'] = admin.is_admin(req.session['email'])
 
     req.resp_json = d
