@@ -196,7 +196,7 @@ class SlipcoverProxyRequest(proxy.ProxyRequest):
 
         self.fireHandler('finish')
 
-        data = json.dumps(self.resp_json).encode() if self.resp_json else self.resp_data
+        data = json.dumps(self.resp_json).encode() if not self.resp_json is None else self.resp_data
         self.responseHeaders.setRawHeaders('content-length', [str(len(data)).encode()])
 
         if data:

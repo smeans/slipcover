@@ -80,38 +80,48 @@ def handle_session_PUT_pre(req):
 
     req.surl.doc_id = str(uuid.uuid4())
     req.req_json['created'] = datetime.datetime.utcnow().isoformat()
-    req.req_json['secret'] = str(uuid.uuid4())
-    req.req_json['confirm_id'] = 'session:%s' % str(uuid.uuid4())
 
-def confirm_session(req, session):
+    confirm = {
+        '_id': 'confirm:%s' % str(uuid.uuid4()),
+        'session_id': req.surl.couchid,
+        'secret': str(uuid.uuid4())
+    }
+
+    sdb = req.cc[req.surl.db]
+    sdb.create_document(confirm)
+    assert(sdb.exists())
+
+def handle_confirm_GET_pre(req):
+    if not (req.surl.doc_id and b'secret' in req.args):
+        return
+
+    sdb = req.cc[req.surl.db]
+
+    if not req.surl.couchid in sdb:
+        return
+
+    cd = sdb[req.surl.couchid]
+
+    session = sdb[cd['session_id']]
+
     if 'confirmed' in session:
         return
 
     secret = req.args[b'secret'][0].decode()
-    if secret == session['secret']:
+    if secret == cd['secret']:
         session['confirmed'] = datetime.datetime.now().isoformat()
+        session['confirmed_by_ip'] = str(req.getClientIP())
         session.save()
 
-def handle_session_GET_pre(req):
-    if not req.surl.doc_id:
-        return
+        cd['confirmed'] = datetime.datetime.now().isoformat()
+        cd['confirmed_by_ip'] = str(req.getClientIP())
+        cd.save()
 
-    if b'secret' in req.args:
-        sdb = req.cc[req.surl.db]
+        # !!!TBD!!! send redirect here to open the app on the mobile device
 
-        pcm = sdb.get_view_result('slipcover', 'pending_confirm', key=req.surl.couchid)[0]
-        req.log.debug(pcm)
-
-        if not pcm:
-            return
-
-        req.surl.doc_type, req.surl.doc_id = pcm[0]['id'].split(':')
-
-        if not req.surl.couchid in sdb:
-            return
-
-        session = sdb[req.surl.couchid]
-        confirm_session(req, session)
+def handle_confirm_GET_finish(req):
+    req.log.debug('in confirm finish', req.resp_json)
+    req.resp_json = {}
 
 def handle_session_GET_finish(req):
     d = {k: req.resp_json[k] for k in req.resp_json if not k in deny}
