@@ -61,7 +61,7 @@ except requests.exceptions.HTTPError as e:
     exit(1)
 
 cdb = cc['slipcover']
-config = cdb['config']
+config = cdb['config:master']
 resources = config['resources']
 
 handler_modules = [importlib.import_module(name) for name in config['handlers']]
