@@ -183,7 +183,7 @@ class SlipcoverProxyRequest(proxy.ProxyRequest):
 
     def write(self, data):
         if not self.resp_data:
-            self.resp_data = bytes(data)
+            self.resp_data = bytearray(data)
         else:
             self.resp_data.extend(data)
 
