@@ -81,15 +81,17 @@ def handle_session_PUT_pre(req):
     req.surl.doc_id = str(uuid.uuid4())
     req.req_json['created'] = datetime.datetime.utcnow().isoformat()
 
-    confirm = {
-        '_id': 'confirm:%s' % str(uuid.uuid4()),
-        'session_id': req.surl.couchid,
-        'secret': str(uuid.uuid4())
-    }
+def handle_session_PUT_finish(req):
+    if req.surl.doc_id or not req.req_json or not 'email' in req.req_json:
+        confirm = {
+            '_id': 'confirm:%s' % str(uuid.uuid4()),
+            'session_id': req.surl.couchid,
+            'secret': str(uuid.uuid4())
+        }
 
-    sdb = req.cc[req.surl.db]
-    sdb.create_document(confirm)
-    assert(sdb.exists())
+        sdb = req.cc[req.surl.db]
+        sdb.create_document(confirm)
+        assert(sdb.exists())
 
 def handle_confirm_GET_pre(req):
     if not (req.surl.doc_id and b'secret' in req.args):
