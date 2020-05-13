@@ -4,6 +4,7 @@ from functools import wraps
 
 from . import log
 from . import admin
+from . import Unauthorized401
 
 allow = ['_id', 'created']
 deny = ['secret', 'confirm_id']
