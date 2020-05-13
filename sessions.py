@@ -94,7 +94,7 @@ def handle_session_PUT_finish(req):
         sdb.create_document(confirm)
         assert(sdb.exists())
 
-def handle_confirm_GET_pre(req):
+def handle_confirm_GET_finish(req):
     if not (req.surl.doc_id and b'secret' in req.args):
         return
 
@@ -108,6 +108,7 @@ def handle_confirm_GET_pre(req):
     session = sdb[cd['session_id']]
 
     if 'confirmed' in session:
+        req.log.warn(session['_id'], 'session already confirmed')
         return
 
     secret = req.args[b'secret'][0].decode()
@@ -116,14 +117,14 @@ def handle_confirm_GET_pre(req):
         session['confirmed_by_ip'] = str(req.getClientIP())
         session.save()
 
+        cd.fetch()
+
         cd['confirmed'] = datetime.datetime.now().isoformat()
         cd['confirmed_by_ip'] = str(req.getClientIP())
         cd.save()
 
         # !!!TBD!!! send redirect here to open the app on the mobile device
 
-def handle_confirm_GET_finish(req):
-    req.log.debug('in confirm finish', req.resp_json)
     req.resp_json = {}
 
 def handle_session_GET_finish(req):
