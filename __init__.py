@@ -16,6 +16,7 @@ import time
 import requests
 import importlib
 import json
+import urllib
 
 from twisted.internet import ssl, reactor
 from twisted.web import proxy, http
@@ -98,7 +99,7 @@ class SlipcoverURL(object):
     @property
     def couchpath(self):
         if self.db and self.doc_type and self.doc_id:
-            return '/%s/%s:%s' % (self.db, self.doc_type, self.doc_id)
+            return '/%s/%s:%s' % (self.db, self.doc_type, urllib.parse.quote(self.doc_id))
 
         return None
 
@@ -158,6 +159,7 @@ class SlipcoverProxyRequest(proxy.ProxyRequest):
                 req_data = json.dumps(self.req_json).encode() if self.req_json else self.req_data
                 headers = self.getAllHeaders().copy()
                 headers[b'content-length'] = str(len(req_data)).encode('ascii')
+                self.log.debug('%s %s' % (self.http_method, couchpath))
                 clientFactory = proxy.ProxyClientFactory(self.http_method.encode('ascii'), couchpath.encode('ascii'),
                         'http'.encode('ascii'), headers,
                         req_data, self)
