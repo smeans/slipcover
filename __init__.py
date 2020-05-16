@@ -51,8 +51,10 @@ class NotFound404(FinishProcessing):
         super().__init__(404, message)
 
 cc = None
+couch_url = os.environ['COUCHURL'] if 'COUCHURL' in os.environ else "http://localhost:5984"
+
 try:
-    cc = Cloudant(os.environ['COUCHUSER'], os.environ['COUCHPASS'], url="http://localhost:5984", connect=True)
+    cc = Cloudant(os.environ['COUCHUSER'], os.environ['COUCHPASS'], url=couch_url, connect=True)
 except KeyError:
     log.error('please configure the COUCHUSER and COUCHPASS environment variables')
     exit(1)
@@ -192,12 +194,11 @@ class SlipcoverProxyRequest(proxy.ProxyRequest):
             self.resp_json = json.loads(self.resp_data.decode())
         except Exception as e:
             self.log.debug('unable to parse resp_data', e)
-            pass
 
         self.fireHandler('finish')
 
         data = json.dumps(self.resp_json).encode() if not self.resp_json is None else self.resp_data
-        self.responseHeaders.setRawHeaders('content-length', [str(len(data)).encode()])
+        self.responseHeaders.setRawHeaders('content-length', [str(len(data)).encode() if data else 0])
 
         if data:
             super().write(data)
