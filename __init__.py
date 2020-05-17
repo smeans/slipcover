@@ -159,7 +159,7 @@ class SlipcoverProxyRequest(proxy.ProxyRequest):
                 req_data = json.dumps(self.req_json).encode() if self.req_json else self.req_data
                 headers = self.getAllHeaders().copy()
                 headers[b'content-length'] = str(len(req_data)).encode('ascii')
-                self.log.debug('%s %s' % (self.http_method, couchpath))
+                self.log.debug('PROXY: %s %s' % (self.http_method, couchpath))
                 clientFactory = proxy.ProxyClientFactory(self.http_method.encode('ascii'), couchpath.encode('ascii'),
                         'http'.encode('ascii'), headers,
                         req_data, self)
