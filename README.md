@@ -34,6 +34,7 @@ To install SlipCover you will need to create a `slipcover` database in the local
     "slipcover.sessions",
     "slipcover.cors"
   ]
+}
 ```
 
 To support CouchDB authentication, you must set the `COUCHUSER` and `COUCHPASS` environment variables with a valid CouchDB login.
